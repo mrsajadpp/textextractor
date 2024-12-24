@@ -7,7 +7,7 @@ nltk.download('words')
 from nltk.corpus import words
 
 # Configuration for data generation
-output_dir = "data"
+output_dir = "newdata"
 os.makedirs(output_dir, exist_ok=True)
 
 # Excluded fonts (e.g., "ml", "fml")
@@ -39,7 +39,7 @@ computer_fonts = random.sample(all_fonts, min(len(all_fonts), 20))
 print(f"Using {len(computer_fonts)} computer fonts.")
 
 # Sample text data
-sample_texts = words.words()
+sample_texts = ["Dear","User,","Handwritten","uses","robotic","handwriting","machines","that","use","an","actual","pen","to","write","your","message.","The","results","are","virtually","indistinguishable","from","actual","handwriting.","Try","it","today!","The","Robot"]
 
 # Function to generate images
 def generate_images(texts, fonts, output_folder, prefix):

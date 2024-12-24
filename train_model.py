@@ -10,45 +10,66 @@ def load_data(data_dir):
     labels = []
     label_map = {}
     label_counter = 0
+    max_label_length = 0
+    
+    # First pass to get max length and build label map
     for filename in os.listdir(data_dir):
-        if filename.endswith(".jpg") or filename.endswith(".png"):
-            image_path = os.path.join(data_dir, filename)
-            label_path = os.path.splitext(image_path)[0] + ".txt"
+        if filename.endswith((".jpg", ".png")):
+            label_path = os.path.splitext(os.path.join(data_dir, filename))[0] + ".txt"
             with open(label_path, 'r') as f:
                 label = f.read().strip()
-            if label not in label_map:
-                label_map[label] = label_counter
-                label_counter += 1
+                max_label_length = max(max_label_length, len(label))
+                for char in label:
+                    if char not in label_map:
+                        label_map[char] = label_counter
+                        label_counter += 1
+    
+    # Second pass to load and pad data
+    for filename in os.listdir(data_dir):
+        if filename.endswith((".jpg", ".png")):
+            image_path = os.path.join(data_dir, filename)
+            label_path = os.path.splitext(image_path)[0] + ".txt"
+            
+            with open(label_path, 'r') as f:
+                label = f.read().strip()
+            
+            # Pad labels
+            label_encoded = [label_map[char] for char in label]
+            label_encoded.extend([0] * (max_label_length - len(label_encoded)))
+            
             image = Image.open(image_path).convert('L')
             image = image.resize((128, 32))
             image = np.array(image) / 255.0
+            
             images.append(image)
-            labels.append(label_map[label])
-    images = np.expand_dims(np.array(images), axis=-1)
-    labels = np.array(labels)
-    return images, labels, label_map
+            labels.append(label_encoded)
+    
+    return np.expand_dims(np.array(images), axis=-1), np.array(labels), label_map
 
-def create_model(input_shape, num_classes):
+def create_model(input_shape, num_classes, max_text_length):
     model = models.Sequential([
         layers.Input(shape=input_shape),
         layers.Conv2D(32, (3, 3), activation='relu'),
         layers.MaxPooling2D((2, 2)),
         layers.Conv2D(64, (3, 3), activation='relu'),
         layers.MaxPooling2D((2, 2)),
-        layers.Flatten(),
-        layers.Dense(128, activation='relu'),
-        layers.Dense(num_classes, activation='softmax')
+        layers.Reshape((-1, 64)),
+        layers.Bidirectional(layers.LSTM(128)),
+        layers.Dense(max_text_length * num_classes),
+        layers.Reshape((max_text_length, num_classes)),
+        layers.Activation('softmax')
     ])
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 if __name__ == "__main__":
-    data_dir = 'data'  # Replace with your data directory
+    data_dir = 'newdata'  # Replace with your data directory
     images, labels, label_map = load_data(data_dir)
     input_shape = (32, 128, 1)
     num_classes = len(label_map)
-    
-    model = create_model(input_shape, num_classes)
+
+    max_text_length = labels.shape[1]
+    model = create_model(input_shape, num_classes, max_text_length)
     model.fit(images, labels, epochs=10, validation_split=0.2)
     model.save('ocr_model.h5')
     

@@ -11,12 +11,16 @@ def preprocess_image(image_path):
     image = np.expand_dims(image, axis=(0, -1))
     return image
 
+def decode_predictions(predictions, label_map):
+    label_map_inv = {v: k for k, v in label_map.items()}
+    decoded_text = ''.join([label_map_inv[np.argmax(char)] for char in predictions])
+    return decoded_text
+
 def extract_text_from_image(model, image_path, label_map):
     image = preprocess_image(image_path)
-    prediction = model.predict(image)
-    predicted_label = np.argmax(prediction, axis=1)[0]
-    label_map_inv = {v: k for k, v in label_map.items()}
-    return label_map_inv[predicted_label]
+    predictions = model.predict(image)
+    extracted_text = decode_predictions(predictions[0], label_map)
+    return extracted_text
 
 if __name__ == "__main__":
     model_path = 'ocr_model.h5'  # Replace with your model path
